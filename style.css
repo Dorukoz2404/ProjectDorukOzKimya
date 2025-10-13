@@ -1,0 +1,185 @@
+/* 🌟 Genel Ayarlar */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Poppins", sans-serif;
+}
+
+body {
+  background: radial-gradient(circle at 20% 30%, #00111f, #000);
+  color: #fff;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 🌟 Ana App Kutusu */
+#app {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(0, 255, 255, 0.25);
+  border-radius: 24px;
+  box-shadow: 0 0 50px rgba(0, 255, 255, 0.3);
+  width: 90%;
+  max-width: 750px;
+  padding: 30px;
+  text-align: center;
+  backdrop-filter: blur(12px);
+  animation: fadeInScale 1s ease-in-out;
+  z-index: 2;
+  position: relative;
+}
+
+/* 🌟 Başlıklar */
+h1 {
+  font-size: 2.2rem;
+  color: #00f0ff;
+  text-shadow: 0 0 12px #00f0ff;
+  margin-bottom: 20px;
+}
+
+/* 🌟 Info Box / Kartlar */
+.info-box {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  border-radius: 18px;
+  padding: 18px;
+  margin: 15px 0;
+  font-size: 1rem;
+  text-align: left;
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  transition: 0.3s ease;
+}
+.info-box:hover {
+  box-shadow: 0 0 25px rgba(0, 255, 255, 0.3);
+}
+
+/* 🌟 Butonlar */
+button {
+  background: linear-gradient(135deg, #00c6ff, #0072ff);
+  border: none;
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 12px 22px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.4);
+}
+
+button:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 25px #00f0ff;
+}
+
+/* 🌟 Input Kutusu */
+input[type="text"] {
+  width: 80%;
+  max-width: 300px;
+  padding: 10px 14px;
+  margin: 8px 0;
+  border-radius: 12px;
+  border: 2px solid rgba(0, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.3);
+  color: #00f0ff;
+  font-size: 1rem;
+  outline: none;
+  text-align: center;
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.2);
+  transition: 0.3s ease;
+}
+
+input[type="text"]::placeholder {
+  color: #00f0ff;
+  opacity: 0.7;
+}
+
+input[type="text"]:focus {
+  border-color: #00f0ff;
+  box-shadow: 0 0 15px #00f0ff;
+}
+
+/* 🌟 Molekül ve Element Kutucukları */
+.molecule {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.element-btn, .molecule button {
+  background: rgba(0, 255, 255, 0.1);
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: 0.3s ease;
+}
+
+.element-btn:hover, .molecule button:hover {
+  background: rgba(0, 255, 255, 0.2);
+  box-shadow: 0 0 15px cyan;
+}
+
+/* 🌟 Artı Butonu */
+.plus-btn {
+  background: transparent;
+  border: 2px solid #00f0ff;
+  color: #00f0ff;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.plus-btn:hover {
+  background: #00f0ff;
+  color: black;
+  box-shadow: 0 0 12px #00f0ff;
+}
+
+/* 🌟 Score & Timer */
+.score-timer {
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+  color: #00f0ff;
+  margin-bottom: 12px;
+  font-size: 1.05rem;
+}
+
+/* 🌟 Animasyonlar */
+@keyframes fadeInScale {
+  0% { opacity: 0; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* 🌟 Video Stili */
+video {
+  border-radius: 14px;
+  box-shadow: 0 0 25px rgba(0, 255, 255, 0.4);
+  max-width: 90%;
+}
+
+/* 🌟 Canvas Tepkime Animasyonu */
+#reactionCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
