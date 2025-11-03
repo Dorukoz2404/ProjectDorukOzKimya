@@ -1,61 +1,48 @@
 // --- GLOBAL ---
-let score=0, timeLeft=75, timerInterval;
-let selectedElements1=[], selectedElements2=[];
+let score = 0, timeLeft = 75, timerInterval;
+let selectedElements1 = [], selectedElements2 = [];
+let selectedReactionType = "";
 const completedReactions = new Set();
-const elements=["H","O","C","N","Na","Cl","K","Ca","Fe","Mg","Zn","S","P","Li","Ag","Cu","Al","Si","Br","I","F","He","B","Ar","Ba","Cr","Pb","Hg","Mn","Co","Ni","Sn","Sr","Ti","V","W","Au","Pt","Se","Cs","Rb","O2"];
-const reactions={
-  "H,H,O":"H2O (Su)",
-  "Na,Cl":"NaCl (Tuz)",
-  "C,O,O":"CO2 (Karbondioksit)",
-  "Fe,O,O,O":"Fe2O3 (Demir Oksit)",
-  "Mg,O":"MgO (Magnezyum Oksit)",
-  "K,Cl":"KCl (Potasyum Klorür)",
-  "Ca,O":"CaO (Kalsiyum Oksit)",
-  "H,H,S":"H2S (Hidrojen Sülfür)"
-};
-const reactionTypes={
-  "H,H,O":"yanma",
-  "C,O,O":"yanma",
-  "Na,Cl":"asit-baz",
-  "K,Cl":"asit-baz",
-  "Ca,O":"asit-baz",
-  "Mg,O":"asit-baz",
-  "Fe,O,O,O":"indirgenme",
-  "H,H,S":"indirgenme"
+const playerReactions = [];
+
+// Element ve reaksiyon verileri
+const elements = ["H","O","C","N","Na","Cl","K","Ca","Fe","Mg","Zn","S","P","Li","Ag","Cu","Al","Si","Br","I","F","He","B","Ar","Ba","Cr","Pb","Hg","Mn","Co","Ni","Sn","Sr","Ti","V","W","Au","Pt","Se","Cs","Rb"];
+const reactions = {
+  "H,H,O": {formula:"H2O", name:"Su", type:"Yanma", harmful:false, explanation:"Su tepkimesi zararsızdır."},
+  "Na,Cl": {formula:"NaCl", name:"Tuz", type:"Asit-Baz", harmful:false, explanation:"Tuz tepkimesi çevreye zarar vermez."},
+  "C,O,O": {formula:"CO2", name:"Karbondioksit", type:"Yanma", harmful:true, explanation:"CO2 atmosfere salınır ve sera etkisine katkı sağlar."},
+  "Fe,O,O,O": {formula:"Fe2O3", name:"Demir Oksit", type:"Oksidasyon", harmful:false, explanation:"Demir oksit doğada zararsızdır."},
+  "Mg,O": {formula:"MgO", name:"Magnezyum Oksit", type:"Yanma", harmful:false, explanation:"Magnezyum oksit çevreye zarar vermez."},
+  "K,Cl": {formula:"KCl", name:"Potasyum Klorür", type:"Asit-Baz", harmful:false, explanation:"Potasyum klorür güvenlidir."},
+  "Ca,O": {formula:"CaO", name:"Kalsiyum Oksit", type:"Yanma", harmful:false, explanation:"Kalsiyum oksit zararsızdır."},
+  "H,H,S": {formula:"H2S", name:"Hidrojen Sülfür", type:"Yanma", harmful:true, explanation:"H2S toksik gazdır ve çevreye zarar verir."}
 };
 
-const app=document.getElementById("app");
-const canvas=document.getElementById("reactionCanvas");
-const ctx=canvas.getContext("2d");
-
-// --- CANVAS AYAR ---
-function resizeCanvas(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
-window.addEventListener("resize",resizeCanvas);
-resizeCanvas();
+const app = document.getElementById("app");
 
 // --- START ---
 function startApp(){
-  selectedElements1=[];
-  selectedElements2=[];
-  score=0;
-  timeLeft=75;
+  selectedElements1 = [];
+  selectedElements2 = [];
+  selectedReactionType = "";
+  score = 0;
+  timeLeft = 75;
   completedReactions.clear();
+  playerReactions.length = 0;
   showRulesPage();
 }
 
-// --- KURALLAR SAYFASI ---
+// --- KURALLAR ---
 function showRulesPage(){
   app.innerHTML = `
     <h1>📜 Oyun Kuralları</h1>
     <div class="info-box">
-      <p>1️⃣ Süre: 75 saniye boyunca tüm tepkimeleri tahmin etmeye çalışın.</p>
+      <p>1️⃣ Süre: 75 saniye boyunca tüm tepkimeleri tahmin edin.</p>
       <p>2️⃣ Puanlama: Doğru tahmin +4, Yanlış tahmin -1, Yanlış kombinasyon -1</p>
-      <p>3️⃣ Element Seçimi: Bir elementten birden fazla gerekiyorsa tekrar tıklayarak ekleyebilirsiniz (ör. CO₂ için 2 O)</p>
-      <p>4️⃣ Tepkime Türü Tahmini: Doğru → +2, Yanlış → -1, Boş → 0</p>
-      <p>5️⃣ Tahmin: Molekül formülü veya açıklaması geçerli, büyük/küçük harf fark etmez</p>
-      <p>6️⃣ Aynı kombinasyonu tekrar yapamazsınız</p>
-      <p>7️⃣ Molekül animasyonunu izleyebilirsiniz</p>
-      <p>8️⃣ Amaç: Doğru tahminlerle maksimum puanı toplamak</p>
+      <p>3️⃣ Tepkime türünü seçin: Yanma, Asit-Baz, Oksidasyon, vs.</p>
+      <p>4️⃣ Elementleri seçip tepkimeyi tahmin edin.</p>
+      <p>5️⃣ Aynı kombinasyonu tekrar yapamazsınız.</p>
+      <p>6️⃣ Tepkimelerin çevreye etkisi göz önünde bulundurarak yapılması önerilir.</p>
     </div>
     <button onclick="showIntroPage1()">Devam Et ➡️</button>
   `;
@@ -63,34 +50,32 @@ function showRulesPage(){
 
 // --- SAYFA 1 ---
 function showIntroPage1(){
-  app.innerHTML=`<h1>🧪 Kimya Keşifleri: Molekül Ustası</h1>
-  <div class="info-box"><p>Kimyasal tepkimeleri keşfetmeye hazır mısın?</p></div>
-  <button onclick="showIntroPage2()">Devam Et ➡️</button>`;
+  app.innerHTML = `<h1>🧪 Kimya Keşifleri: Molekül Ustası</h1>
+    <div class="info-box"><p>Kimyasal tepkimeleri keşfetmeye hazır mısın?</p></div>
+    <button onclick="showIntroPage2()">Devam Et ➡️</button>`;
 }
 
 // --- SAYFA 2 ---
 function showIntroPage2(){
-  app.innerHTML=`<h1>🔬 Tepkime Örnekleri</h1>
-  <div class="info-box">
-    <p>🌿 H + O → H₂O</p>
-    <p>🧂 Na + Cl → NaCl</p>
-    <p>🔥 C + O₂ → CO₂</p>
-  </div>
-  <button onclick="showVideoPage()">Animasyonu İzle 🎬</button>`;
+  app.innerHTML = `<h1>🔬 Tepkime Örnekleri</h1>
+    <div class="info-box">
+      <p>🌿 H + O → H₂O</p>
+      <p>🧂 Na + Cl → NaCl</p>
+      <p>🔥 C + O → CO2</p>
+    </div>
+    <button onclick="showVideoPage()">Animasyonu İzle 🎬</button>`;
 }
 
 // --- SAYFA 3: VIDEO ---
 function showVideoPage(){
-  app.innerHTML=`<h1>🎬 Molekül Animasyonu</h1>
-  <video id="introVideo" autoplay controls style="width:90%; max-width:600px; border-radius:12px; box-shadow:0 0 15px cyan;">
-    <source src="molekul_animasyon.mp4" type="video/mp4">
-    Tarayıcınız video etiketini desteklemiyor.
-  </video>
-  <br><button id="skipBtn" style="margin-top:15px;">Geç ➤</button>`;
-
-  const video=document.getElementById("introVideo");
-  const skipBtn=document.getElementById("skipBtn");
-
+  app.innerHTML = `<h1>🎬 Molekül Animasyonu</h1>
+    <video id="introVideo" autoplay controls>
+      <source src="molekul_animasyon.mp4" type="video/mp4">
+      Tarayıcınız video etiketini desteklemiyor.
+    </video>
+    <br><button id="skipBtn">Geç ➤</button>`;
+  const video = document.getElementById("introVideo");
+  const skipBtn = document.getElementById("skipBtn");
   video.addEventListener("ended", startGame);
   skipBtn.addEventListener("click", startGame);
 }
@@ -117,19 +102,20 @@ function startGame(){
     </div>
 
     <div class="info-box">
-      <h2>3. Tepkime Sonucu Tahmini</h2>
+      <h2>3. Tepkime Türü</h2>
+      <button onclick="selectReactionType('Yanma')">Yanma</button>
+      <button onclick="selectReactionType('Asit-Baz')">Asit-Baz</button>
+      <button onclick="selectReactionType('Oksidasyon')">Oksidasyon</button>
+    </div>
+
+    <div class="info-box">
+      <h2>4. Tepkime Sonucu Tahmini</h2>
       <input type="text" id="reactionInput" placeholder="Oluşan bileşiği yaz...">
       <button onclick="checkReaction()">Tahmin Et ⚡</button>
     </div>
 
-    <div class="info-box">
-      <h2>4. Tepkime Türü Tahmini</h2>
-      <input type="text" id="reactionTypeInput" placeholder="Örn: yanma, asit-baz, indirgenme">
-    </div>
-
     <div class="info-box" id="resultBox"></div>
   `;
-
   updateMoleculeDisplay();
   startTimer();
 }
@@ -143,7 +129,7 @@ function startTimer(){
       document.getElementById("timer").textContent=timeLeft;
     }else{
       clearInterval(timerInterval);
-      gameOver();
+      showPostGameScreen();
     }
   },1000);
 }
@@ -151,20 +137,18 @@ function startTimer(){
 // --- ELEMENT SEÇİMİ ---
 function openElementSelector(slot){
   app.innerHTML=`<h1>🔹 Element Seç</h1>
-  <div class="element-selector">
-    ${elements.map(el=>`<button class="element-btn" onclick="selectElement('${el}',${slot})">${el}</button>`).join("")}
-  </div>
-  <button onclick="startGame()">⬅️ Geri Dön</button>`;
+    <div class="element-selector">
+      ${elements.map(el=>`<button class="element-btn" onclick="selectElement('${el}',${slot})">${el}</button>`).join("")}
+    </div>
+    <button onclick="startGame()">⬅️ Geri Dön</button>`;
 }
 
-// --- ELEMENT SEÇ ---
 function selectElement(el,slot){
   if(slot===1) selectedElements1.push(el);
   else selectedElements2.push(el);
   startGame();
 }
 
-// --- MOLEKÜL GÖSTER ---
 function updateMoleculeDisplay(){
   const input1Div=document.getElementById("input1");
   const input2Div=document.getElementById("input2");
@@ -172,129 +156,94 @@ function updateMoleculeDisplay(){
   if(input2Div) input2Div.innerHTML=selectedElements2.map((el,idx)=>`${el} <button onclick="removeElement(2,${idx})">X</button>`).join(" ");
 }
 
-// --- ELEMENT SİL ---
 function removeElement(slot,idx){
   if(slot===1) selectedElements1.splice(idx,1);
   else selectedElements2.splice(idx,1);
   updateMoleculeDisplay();
 }
 
+function selectReactionType(type){
+  selectedReactionType = type;
+  alert(`Tepkime türü seçildi: ${type}`);
+}
+
 // --- TEPKİME KONTROL ---
 function checkReaction(){
   const resultBox = document.getElementById("resultBox");
-
   const countElements = {};
   [...selectedElements1, ...selectedElements2].forEach(el => {
     countElements[el] = (countElements[el] || 0) + 1;
   });
-  const userKey = Object.keys(countElements)
-                        .sort()
-                        .map(el => Array(countElements[el]).fill(el).join(","))
-                        .join(",");
-
+  const userKey = Object.keys(countElements).sort().map(el=>Array(countElements[el]).fill(el).join(",")).join(",");
   if(completedReactions.has(userKey)){
     resultBox.innerHTML = `⚠️ Bu tepkimeyi zaten yaptınız!`;
     return;
   }
-
   completedReactions.add(userKey);
 
-  const userInput = document.getElementById("reactionInput").value.trim().toLowerCase();
-  const userType = document.getElementById("reactionTypeInput").value.trim().toLowerCase();
-
+  const userInputFormula = document.getElementById("reactionInput").value.trim().toLowerCase();
   let found = false;
   for(let key in reactions){
     const reactionKey = key.split(",").sort().join(",");
-    if(reactionKey === userKey){
+    if(reactionKey===userKey){
       found = true;
+      const data = reactions[key];
+      const correctFormula = (userInputFormula === data.formula.toLowerCase() || userInputFormula === data.name.toLowerCase());
+      const correctType = (selectedReactionType === data.type);
 
-      const parts = reactions[key].split(" ");
-      const formula = parts[0].toLowerCase();        
-      const name = parts.slice(1).join(" ").toLowerCase().replace(/[()]/g,""); 
-
-      // ✅ Tepkime sonucu kontrol
-      if(userInput === formula || userInput === name){
-        resultBox.innerHTML = `✅ Doğru! Oluşan bileşik: <b>${reactions[key]}</b>`;
-        score += 4;
-      } else if(userInput==="") {} // boş → 0
-      else {
-        resultBox.innerHTML = `❌ Yanlış tahmin! Doğru bileşik: <b>${reactions[key]}</b>`;
-        score -= 1;
+      if(correctFormula && correctType){
+        resultBox.innerHTML = `✅ Bileşik ve tür doğru! ${data.formula} (${data.name}) - Tür: ${data.type}`;
+        score +=4;
+      } else if(correctFormula && !correctType){
+        resultBox.innerHTML = `⚠️ Bileşik doğru ama tür yanlış! Doğru tür: ${data.type}`;
+        score +=3;
+      } else {
+        resultBox.innerHTML = `❌ Yanlış tahmin! Doğru bileşik: ${data.formula} (${data.name}), Tür: ${data.type}`;
+        score -=1;
       }
-
-      // ✅ Tepkime türü kontrol
-      const correctType = reactionTypes[key];
-      if(userType===correctType){
-        score +=2;
-      } else if(userType==="") {} // boş → 0
-      else {score -=1;}
-
-      document.getElementById("score").textContent = score;
-
-      // ✅ Canvas animasyon
-      if(["yanma","indirgenme","asit-baz"].includes(correctType)){
-        playReactionAnimation(correctType);
-      }
-
+      playerReactions.push({key, ...data});
       break;
     }
   }
-
   if(!found){
-    resultBox.innerHTML = `❌ Yanlış kombinasyon! Tekrar dene.`;
-    score -= 1;
-    document.getElementById("score").textContent = score;
+    resultBox.innerHTML = `❌ Yanlış kombinasyon! Tekrar deneyin.`;
+    score -=1;
   }
+  document.getElementById("score").textContent = score;
 }
 
-// --- CANVAS ANİMASYON ---
-function playReactionAnimation(type){
-  const particles=[];
-  const colors={
-    "yanma":"orange",
-    "indirgenme":"yellow",
-    "asit-baz":"cyan"
-  };
+// --- OYUN SONU VE ÇEVRE EKRANI ---
+function showPostGameScreen(){
+  app.innerHTML=`<h1>⏱️ Süre Doldu!</h1>
+  <div class="info-box">
+    <p>Toplam Puanınız: <b>${score}</b></p>
+  </div>`;
+  setTimeout(showEnvironmentalImpactScreen, 3000);
+}
 
-  for(let i=0;i<100;i++){
-    particles.push({
-      x:Math.random()*canvas.width,
-      y:Math.random()*canvas.height,
-      dx:(Math.random()-0.5)*4,
-      dy:(Math.random()-0.5)*4,
-      radius:2+Math.random()*3,
-      color:colors[type]
+function showEnvironmentalImpactScreen(){
+  let harmfulReactions = playerReactions.filter(r=>r.harmful);
+  let html = `<h1>🌍 Çevresel Etki</h1>
+    <div class="info-box">`;
+  if(harmfulReactions.length===0){
+    html += `<p>Tüm yaptığınız tepkimeler çevre için güvenlidir.</p>`;
+  } else {
+    html += `<p>Yaptığınız bazı tepkimeler çevreye zarar verdi:</p>`;
+    harmfulReactions.forEach(r=>{
+      html += `<p>⚠️ ${r.formula} (${r.name}) → ${r.explanation} (-1 ceza uygulanabilir)</p>`;
     });
   }
-
-  let duration=0;
-  function animate(){
-    duration++;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    particles.forEach(p=>{
-      p.x+=p.dx;
-      p.y+=p.dy;
-      p.radius*=0.96;
-      ctx.beginPath();
-      ctx.arc(p.x,p.y,p.radius,0,Math.PI*2);
-      ctx.fillStyle=p.color;
-      ctx.fill();
-    });
-    if(duration<120){ // ~2 saniye
-      requestAnimationFrame(animate);
-    } else {
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-    }
-  }
-  animate();
+  html += `</div><button onclick="showFinalScore()">Sonucu Göster ➤</button>`;
+  app.innerHTML = html;
 }
 
-// --- GAME OVER ---
-function gameOver(){
-  app.innerHTML=`<h1>🎉 Süre Doldu!</h1>
-  <div class="info-box"><p>Toplam Puanın: <b>${score}</b></p></div>
-  <button onclick="startApp()">Yeniden Oyna 🔁</button>`;
+function showFinalScore(){
+  app.innerHTML = `<h1>🏁 Oyun Sonucu</h1>
+  <div class="info-box">
+    <p>Toplam Skorunuz: <b>${score}</b></p>
+    <p>Çevreye zararlı tepkimelerden dolayı ceza puanları zaten uygulandı.</p>
+  </div>
+  <button onclick="startApp()">🔄 Tekrar Oyna</button>`;
 }
 
-// --- BAŞLAT ---
 startApp();
