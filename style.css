@@ -171,3 +171,8 @@ video {
   max-width: 90%;
 } 
 
+/* Seçilen tepki türünü vurgulama */
+#selectedTypeText b {
+  color: #00ff9d;
+  text-shadow: 0 0 10px #00ff9d;
+}
