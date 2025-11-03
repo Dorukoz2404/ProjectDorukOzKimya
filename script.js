@@ -27,6 +27,7 @@ function startApp(){
   selectedReactionType = "";
   score = 0;
   timeLeft = 75;
+  clearInterval(timerInterval);
   completedReactions.clear();
   playerReactions.length = 0;
   showRulesPage();
@@ -38,11 +39,11 @@ function showRulesPage(){
     <h1>📜 Oyun Kuralları</h1>
     <div class="info-box">
       <p>1️⃣ Süre: 75 saniye boyunca tüm tepkimeleri tahmin edin.</p>
-      <p>2️⃣ Puanlama: Doğru tahmin +4, Yanlış tahmin -1, Yanlış kombinasyon -1</p>
+      <p>2️⃣ Puanlama: Doğru tahmin +4, Doğru bileşik ama tür yanlış +3, Yanlış tahmin -1, Yanlış kombinasyon -1</p>
       <p>3️⃣ Tepkime türünü seçin: Yanma, Asit-Baz, Oksidasyon, vs.</p>
       <p>4️⃣ Elementleri seçip tepkimeyi tahmin edin.</p>
-      <p>5️⃣ Aynı kombinasyonu tekrar yapamazsınız.</p>
-      <p>6️⃣ Tepkimelerin çevreye etkisi göz önünde bulundurarak yapılması önerilir.</p>
+      <p>5️⃣ Aynı kombinasyonu tekrar yapamazsınız (geçerli bir kombinasyonu bir kere yaptığınızda tekrar işlenmez).</p>
+      <p>6️⃣ Zararlı tepkimeler için ek puan kesintisi uygulanabilir.</p>
     </div>
     <button onclick="showIntroPage1()">Devam Et ➡️</button>
   `;
@@ -76,8 +77,8 @@ function showVideoPage(){
     <br><button id="skipBtn">Geç ➤</button>`;
   const video = document.getElementById("introVideo");
   const skipBtn = document.getElementById("skipBtn");
-  video.addEventListener("ended", startGame);
-  skipBtn.addEventListener("click", startGame);
+  if(video) video.addEventListener("ended", startGame);
+  if(skipBtn) skipBtn.addEventListener("click", startGame);
 }
 
 // --- OYUN ---
@@ -103,6 +104,7 @@ function startGame(){
 
     <div class="info-box">
       <h2>3. Tepkime Türü</h2>
+      <div id="selectedTypeText" style="margin-bottom:8px;">Seçilen tür: <b>${selectedReactionType || "—"}</b></div>
       <button onclick="selectReactionType('Yanma')">Yanma</button>
       <button onclick="selectReactionType('Asit-Baz')">Asit-Baz</button>
       <button onclick="selectReactionType('Oksidasyon')">Oksidasyon</button>
@@ -126,7 +128,8 @@ function startTimer(){
   timerInterval=setInterval(()=>{
     if(timeLeft>0){
       timeLeft--;
-      document.getElementById("timer").textContent=timeLeft;
+      const timerEl = document.getElementById("timer");
+      if(timerEl) timerEl.textContent=timeLeft;
     }else{
       clearInterval(timerInterval);
       showPostGameScreen();
@@ -137,15 +140,16 @@ function startTimer(){
 // --- ELEMENT SEÇİMİ ---
 function openElementSelector(slot){
   app.innerHTML=`<h1>🔹 Element Seç</h1>
-    <div class="element-selector">
+    <div class="element-selector" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;">
       ${elements.map(el=>`<button class="element-btn" onclick="selectElement('${el}',${slot})">${el}</button>`).join("")}
     </div>
-    <button onclick="startGame()">⬅️ Geri Dön</button>`;
+    <div style="margin-top:12px;"><button onclick="startGame()">⬅️ Geri Dön</button></div>`;
 }
 
 function selectElement(el,slot){
   if(slot===1) selectedElements1.push(el);
   else selectedElements2.push(el);
+  // geri dönüp ekranı güncellemek için startGame çağırılıyor
   startGame();
 }
 
@@ -160,56 +164,97 @@ function removeElement(slot,idx){
   if(slot===1) selectedElements1.splice(idx,1);
   else selectedElements2.splice(idx,1);
   updateMoleculeDisplay();
+  // skor veya gösterim güncellenmiş olabilir
 }
 
+// kullanıcı tepki türünü seçer ve ekranda gösterir
 function selectReactionType(type){
   selectedReactionType = type;
+  // Eğer oyun ekranındaysak seçilen türü güncelle
+  const txt = document.getElementById("selectedTypeText");
+  if(txt) txt.innerHTML = `Seçilen tür: <b>${selectedReactionType}</b>`;
   alert(`Tepkime türü seçildi: ${type}`);
 }
 
 // --- TEPKİME KONTROL ---
 function checkReaction(){
   const resultBox = document.getElementById("resultBox");
+  if(!resultBox) return;
+
+  // Seçilmiş elementlerin birleştirilmesi ve sayılması
   const countElements = {};
   [...selectedElements1, ...selectedElements2].forEach(el => {
     countElements[el] = (countElements[el] || 0) + 1;
   });
-  const userKey = Object.keys(countElements).sort().map(el=>Array(countElements[el]).fill(el).join(",")).join(",");
-  if(completedReactions.has(userKey)){
-    resultBox.innerHTML = `⚠️ Bu tepkimeyi zaten yaptınız!`;
+
+  // Eğer hiç element seçilmemişse uyar
+  if(Object.keys(countElements).length === 0){
+    resultBox.innerHTML = `⚠️ Lütfen önce element seçin.`;
     return;
   }
-  completedReactions.add(userKey);
 
-  const userInputFormula = document.getElementById("reactionInput").value.trim().toLowerCase();
+  // userKey oluşturma: örn "H,H,O"
+  const userKey = Object.keys(countElements)
+    .sort()
+    .map(el=>{
+      return Array(countElements[el]).fill(el).join(",");
+    })
+    .join(",");
+
+  // Kullanıcının girdiği formül (normalize)
+  const userInputFormula = (document.getElementById("reactionInput").value || "").trim().toLowerCase();
+
+  // kontrol: daha önce başarılı bir kombinasyon yaptıysak tekrar etme
+  if(completedReactions.has(userKey)){
+    resultBox.innerHTML = `⚠️ Bu tepkimeyi zaten yaptınız (geçerli kombinasyon olarak).`;
+    return;
+  }
+
+  // Arama
   let found = false;
   for(let key in reactions){
     const reactionKey = key.split(",").sort().join(",");
-    if(reactionKey===userKey){
+    if(reactionKey === userKey){
       found = true;
       const data = reactions[key];
       const correctFormula = (userInputFormula === data.formula.toLowerCase() || userInputFormula === data.name.toLowerCase());
       const correctType = (selectedReactionType === data.type);
 
+      // Artık kombinasyon valid olduğuna göre tekrar edilmesin diye sete ekle
+      completedReactions.add(userKey);
+
+      // Puanlama ve sonuç mesajı
       if(correctFormula && correctType){
+        score += 4;
         resultBox.innerHTML = `✅ Bileşik ve tür doğru! ${data.formula} (${data.name}) - Tür: ${data.type}`;
-        score +=4;
       } else if(correctFormula && !correctType){
+        score += 3;
         resultBox.innerHTML = `⚠️ Bileşik doğru ama tür yanlış! Doğru tür: ${data.type}`;
-        score +=3;
       } else {
+        score -= 1;
         resultBox.innerHTML = `❌ Yanlış tahmin! Doğru bileşik: ${data.formula} (${data.name}), Tür: ${data.type}`;
-        score -=1;
       }
+
+      // Zararlı tepkimeler için ek ceza uygula (isteğe göre değiştirilebilir)
+      if(data.harmful){
+        score -= 1; // ek ceza
+        resultBox.innerHTML += `<br>⚠️ Bu tepkime çevre için zararlıdır: ${data.explanation}. Ek -1 ceza uygulandı.`;
+      }
+
       playerReactions.push({key, ...data});
       break;
     }
   }
+
   if(!found){
+    // Geçersiz kombinasyon: sete ekleme (kullanıcının tekrar denemesine izin veriyoruz)
     resultBox.innerHTML = `❌ Yanlış kombinasyon! Tekrar deneyin.`;
-    score -=1;
+    score -= 1;
   }
-  document.getElementById("score").textContent = score;
+
+  // Skoru güncelle
+  const scoreEl = document.getElementById("score");
+  if(scoreEl) scoreEl.textContent = score;
 }
 
 // --- OYUN SONU VE ÇEVRE EKRANI ---
@@ -230,7 +275,7 @@ function showEnvironmentalImpactScreen(){
   } else {
     html += `<p>Yaptığınız bazı tepkimeler çevreye zarar verdi:</p>`;
     harmfulReactions.forEach(r=>{
-      html += `<p>⚠️ ${r.formula} (${r.name}) → ${r.explanation} (-1 ceza uygulanabilir)</p>`;
+      html += `<p>⚠️ ${r.formula} (${r.name}) → ${r.explanation} (Ek puan cezası uygulandı)</p>`;
     });
   }
   html += `</div><button onclick="showFinalScore()">Sonucu Göster ➤</button>`;
@@ -241,7 +286,7 @@ function showFinalScore(){
   app.innerHTML = `<h1>🏁 Oyun Sonucu</h1>
   <div class="info-box">
     <p>Toplam Skorunuz: <b>${score}</b></p>
-    <p>Çevreye zararlı tepkimelerden dolayı ceza puanları zaten uygulandı.</p>
+    <p>Çevreye zararlı tepkimelerden dolayı ek ceza puanları uygulandı (oyun içinde gösterildi).</p>
   </div>
   <button onclick="startApp()">🔄 Tekrar Oyna</button>`;
 }
